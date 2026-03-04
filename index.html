@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Latihan Terjemahan</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      margin: 0;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background-color: #f0f0f0;
+    }
+    h2 {
+      text-align: center;
+    }
+    #game-container {
+      position: relative;
+      display: flex;
+      justify-content: center;
+      gap: 80px;
+      width: 100%;
+      max-width: 800px;
+      margin-top: 20px;
+    }
+    .column {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      width: 38%;
+      padding: 5px;
+    }
+    .word {
+      padding: 8px;
+      background-color: white;
+      border: 1px solid #ccc;
+      text-align: center;
+      cursor: pointer;
+      border-radius: 5px;
+    }
+    .selected {
+      background-color: #cce5ff;
+    }
+    canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      pointer-events: none;
+    }
+    .button-container {
+      margin-top: 20px;
+      display: flex;
+      gap: 20px;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+      border-radius: 5px;
+      border: none;
+      background-color: #007bff;
+      color: white;
+    }
+    @media (max-width: 768px) {
+      #game-container {
+        flex-direction: column;
+        align-items: center;
+        gap: 20px;
+      }
+      .column {
+        width: 100%;
+        align-items: center;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h2>Latihan Terjemahan (Klik Kiri & Kanan)</h2>
+  <div id="game-container">
+    <div class="column" id="left-column"></div>
+    <canvas id="canvas"></canvas>
+    <div class="column" id="right-column"></div>
+  </div>
+  <div class="button-container">
+    <button id="check-button">Cek Jawaban</button>
+    <button id="reset-button">Ulang</button>
+  </div>
+
+  <script>
+    const originalPairs = [
+      ['Tertinggal/Terbelakang', '落后'], 
+      ['Kampung Halaman', '家乡'], 
+      ['Wajah/Stereotip', '面貌'], 
+      ['Kuat', '强烈'], 
+      ['Berturut-turut', '陆续'], 
+      ['Menyetujui', '批准'], 
+      ['Syarat', '条件'], 
+      ['Serius', '庄严'], 
+      ['Ketua', '主席'], 
+      ['Menginvestasikan', '投入'], 
+      ['Jumlah yang Besar', '大量'], 
+      ['Sederhana', '朴素'], 
+      ['Humor', '幽默'], 
+      ['Lahir/Muncul', '诞生'], 
+      ['Mengendalikan', '驾驶'], 
+      ['Nyamuk', '蚊子'], 
+      ['Saudara Dekat', '亲戚'], 
+      ['Registrasi', '登记'], 
+      ['Benci', '讨厌'], 
+      ['Canggung', '尴尬'], 
+      ['Meminta Maaf', '道歉'], 
+      ['Terlebih Dahulu', '预先'], 
+      ['Kemampuan/Talenta', '才能'], 
+      ['Menjamin', '保证'] 
+    ];
+
+    let pairs, leftWords, rightWords;
+    let leftCol = document.getElementById('left-column');
+    let rightCol = document.getElementById('right-column');
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    let connections = [];
+    let selectedLeft = null;
+    let selectedRight = null;
+
+    function resizeCanvas() {
+      canvas.width = document.getElementById('game-container').offsetWidth;
+      canvas.height = document.getElementById('game-container').offsetHeight;
+    }
+
+    function drawLines() {
+      resizeCanvas();
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      connections.forEach(conn => {
+        const rect1 = conn.left.getBoundingClientRect();
+        const rect2 = conn.right.getBoundingClientRect();
+        const parentRect = canvas.getBoundingClientRect();
+        ctx.beginPath();
+        ctx.moveTo(rect1.right - parentRect.left, rect1.top + rect1.height / 2 - parentRect.top);
+        ctx.lineTo(rect2.left - parentRect.left, rect2.top + rect2.height / 2 - parentRect.top);
+        ctx.strokeStyle = conn.color || 'black';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      });
+    }
+
+    function createWordElement(text, side) {
+      const div = document.createElement('div');
+      div.className = 'word';
+      div.textContent = text;
+      div.dataset.word = text;
+      div.addEventListener('click', () => {
+        if (side === 'left') {
+          if (selectedLeft) selectedLeft.classList.remove('selected');
+          selectedLeft = div;
+          div.classList.add('selected');
+        } else {
+          if (selectedRight) selectedRight.classList.remove('selected');
+          selectedRight = div;
+          div.classList.add('selected');
+        }
+
+        if (selectedLeft && selectedRight) {
+          connections.push({
+            left: selectedLeft,
+            right: selectedRight,
+            color: 'black'
+          });
+          selectedLeft.classList.remove('selected');
+          selectedRight.classList.remove('selected');
+          selectedLeft = null;
+          selectedRight = null;
+          drawLines();
+        }
+      });
+      return div;
+    }
+
+    function initGame() {
+      leftCol.innerHTML = '';
+      rightCol.innerHTML = '';
+      connections = [];
+      selectedLeft = null;
+      selectedRight = null;
+      pairs = [...originalPairs];
+      leftWords = pairs.map(p => p[0]).sort(() => Math.random() - 0.5);
+      rightWords = pairs.map(p => p[1]).sort(() => Math.random() - 0.5);
+
+      leftWords.forEach(word => {
+        const el = createWordElement(word, 'left');
+        leftCol.appendChild(el);
+      });
+
+      rightWords.forEach(word => {
+        const el = createWordElement(word, 'right');
+        rightCol.appendChild(el);
+      });
+
+      drawLines();
+    }
+
+    document.getElementById('check-button').addEventListener('click', () => {
+      connections.forEach(conn => {
+        const wordL = conn.left.dataset.word;
+        const wordR = conn.right.dataset.word;
+        if (originalPairs.some(p => p[0] === wordL && p[1] === wordR)) {
+          conn.color = 'green';
+        } else {
+          conn.color = 'red';
+        }
+      });
+      drawLines();
+    });
+
+    document.getElementById('reset-button').addEventListener('click', () => {
+      initGame();
+    });
+
+    window.addEventListener('resize', drawLines);
+    window.addEventListener('load', initGame);
+  </script>
+</body>
+</html>
